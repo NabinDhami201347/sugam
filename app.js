@@ -290,20 +290,22 @@ app.get("/courses", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/courses/:id", authMiddleware, async (req, res) => {
-  const courseId = req.params.id;
-
-  const course = await Course.findById(courseId).populate("instructor").populate("enrolledStudents");
-  res.render("singlecourse", { course: course });
-});
-
 app.get("/courses/edit/:id", authMiddleware, async (req, res) => {
-  const courseId = req.params.id;
-  const userId = req.user._id;
+  try {
+    const courseId = req.params.id;
+    const userId = req.user._id;
 
-  const course = await Course.findById(courseId);
+    const course = await Course.findById(courseId);
 
-  res.render("edit", { courseId, userId, course });
+    if (!course) {
+      return res.status(404).send("Course not found");
+    }
+
+    res.render("edit", { courseId, userId, course });
+  } catch (error) {
+    console.error("An error occurred:", error);
+    res.status(500).send("An error occurred while retrieving the course for editing");
+  }
 });
 
 // Route to update a specific course by ID
@@ -312,6 +314,10 @@ app.post("/courses/edit/:id", authMiddleware, async (req, res) => {
   const { title, description, duration } = req.body;
 
   try {
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({ error: "Invalid course ID." });
+    }
+
     const updatedCourse = await Course.findByIdAndUpdate(
       courseId,
       { $set: { title, description, duration } },
