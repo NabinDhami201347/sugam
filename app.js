@@ -353,26 +353,27 @@ app.get("/courses/delete/:id", authMiddleware, async (req, res) => {
 
 // Route for enrolling a student in a course
 app.get("/enroll/:courseId", authMiddleware, async (req, res) => {
-  const courseId = req.params.courseId; // Get the courseId from req.params
+  const courseId = req.params.courseId;
   const studentId = req.user._id;
 
   try {
     const course = await Course.findById(courseId);
+    const student = await User.findById(studentId);
 
     if (!course) {
       return res.status(404).json({ error: "Course not found." });
     }
 
-    // Check if the student is already enrolled in the course
     if (course.enrolledStudents.includes(studentId)) {
       return res.status(400).json({ error: "Student is already enrolled in the course." });
     }
 
-    // Enroll the student in the course by adding the student ID to the enrolledStudents array
     course.enrolledStudents.push(studentId);
+    student.enrolledCourses.push(courseId);
 
-    // Save the updated course with the enrolled student
     await course.save();
+    await student.save();
+
     res.redirect("/courses");
   } catch (err) {
     console.error("Error enrolling the student:", err);
@@ -382,11 +383,12 @@ app.get("/enroll/:courseId", authMiddleware, async (req, res) => {
 
 // Route for unenrolling a student from a course
 app.get("/unenroll/:courseId", authMiddleware, async (req, res) => {
-  const courseId = req.params.courseId; // Get the courseId from req.params
+  const courseId = req.params.courseId;
   const studentId = req.user._id;
 
   try {
     const course = await Course.findById(courseId);
+    const student = await User.findById(studentId);
 
     if (!course) {
       return res.status(404).json({ error: "Course not found." });
@@ -399,9 +401,11 @@ app.get("/unenroll/:courseId", authMiddleware, async (req, res) => {
 
     // Remove the student ID from the enrolledStudents array to unenroll the student
     course.enrolledStudents = course.enrolledStudents.filter((id) => id.toString() !== studentId.toString());
+    student.enrolledCourses = student.enrolledCourses.filter((course) => course.toString() !== courseId.toString());
 
-    // Save the updated course after unenrolling the student
     await course.save();
+    await student.save();
+
     res.redirect("/courses");
   } catch (err) {
     console.error("Error unenrolling the student:", err);
